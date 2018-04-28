@@ -1,8 +1,8 @@
-$RemoteUserName='rindalp'
+$RemoteUserName='trieun'
 $RemoteHostName='eve.eecs.oregonstate.edu'
-$PrivateKey='C:\keys\key.ppk'
+$PrivateKey='C:\EvePrivatekey.ppk'
 $SolutionDir=$PWD
-$RemoteWorkingDir='/scratch/repo/libPSI'
+$RemoteWorkingDir='/scratch/nini/libPSI'
 
 # only files with these exptenstions will be copied
 $FileMasks='**.cpp;**.c;**.h;*CMakeLists.txt;*.bin;*.S;thirdparty/linux/**.get'
