@@ -40,88 +40,101 @@ namespace osuCrypto
 
 		std::vector<std::vector<u8>> sendBuff2(chls.size());
 
+		
+
         auto routine = [&](u64 t)
         {
             u64 inputStartIdx = inputs.size() * t / chls.size();
             u64 inputEndIdx = inputs.size() * (t + 1) / chls.size();
             u64 subsetInputSize = inputEndIdx - inputStartIdx;
 
-
+			
             auto& chl = chls[t];
             auto& prng = thrdPrng[t];
 
-            EllipticCurve curve(curveParam, prng.get<block>());
-          
-            RandomOracle inputHasher(sizeof(block));
+
+			EllipticCurve curve(curveParam, prng.get<block>());
+			RandomOracle inputHasher(sizeof(block));
 			EccNumber a(curve);
 			EccPoint xa(curve), point(curve), yb(curve), yba(curve);
-            a.randomize(RsSeed);
+			a.randomize(RsSeed);
 
-			std::vector<u8> sendBuff(xa.sizeBytes() * subsetInputSize);
-			auto sendIter = sendBuff.data();
+
 			sendBuff2[t].resize(maskSizeByte * subsetInputSize);
 			auto sendIter2 = sendBuff2[t].data();
 
-			std::vector<u8> recvBuff(yb.sizeBytes() * subsetInputSize);
-            std::vector<u8> temp(yba.sizeBytes());
-
-			//send H(x)^a
-            for (u64 i = inputStartIdx ; i < inputEndIdx; ++i)
-            {
-                block seed;
-                inputHasher.Reset();
-                inputHasher.Update(inputs[i]);
-                inputHasher.Final(seed);
-
-				point.randomize(seed);
-                //std::cout << "sp  " << point << "  " << toBlock(hashOut) << std::endl;
-
-				xa = (point * a);
-#ifdef PRINT
-				if (i == 0)
-					std::cout << "xa[" << i << "] " << xa << std::endl;
-#endif	
-				xa.toBytes(sendIter);
-				sendIter += xa.sizeBytes();
-            }
-			chl.asyncSend(std::move(sendBuff));
-
-    
-			//recv H(y)^b
-			chl.recv(recvBuff);
-			if (recvBuff.size() != subsetInputSize * yb.sizeBytes())
+			for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
 			{
-				std::cout << "error @ " << (LOCATION) << std::endl;
-				throw std::runtime_error(LOCATION);
-			}
-			auto recvIter = recvBuff.data();
-
-			//send H(y)^b^a
-            for (u64 i = inputStartIdx; i < inputEndIdx;i++)
-            {
-				yb.fromBytes(recvIter); recvIter += yb.sizeBytes();
-				yba = yb*a;
-
-                
-                yba.toBytes(temp.data());
-                RandomOracle ro(sizeof(block));
-                ro.Update(temp.data(), temp.size());
-                block blk;
-                ro.Final(blk);
-                memcpy(sendIter2, &blk, maskSizeByte);
-#ifdef PRINT
-				if (i == 0)
+				auto curStepSize = std::min(stepSize, inputEndIdx - i);
+				
+				std::vector<u8> sendBuff(xa.sizeBytes() * curStepSize);
+				auto sendIter = sendBuff.data();
+				
+				//send H(x)^a
+				for (u64 k = 0; k < curStepSize; ++k)
 				{
-					std::cout << "yba[" << i << "] " << yba << std::endl;
-					std::cout << "temp[" << i << "] " << toBlock(temp) << std::endl;
-					std::cout << "sendIter2[" << i << "] " << toBlock(sendIter2) << std::endl;
+					block seed;
+					inputHasher.Reset();
+					inputHasher.Update(inputs[i+k]);
+					inputHasher.Final(seed);
+
+					point.randomize(seed);
+					//std::cout << "sp  " << point << "  " << toBlock(hashOut) << std::endl;
+
+					xa = (point * a);
+#ifdef PRINT
+					if (i == 0)
+						std::cout << "xa[" << i << "] " << xa << std::endl;
+#endif	
+					xa.toBytes(sendIter);
+					sendIter += xa.sizeBytes();
 				}
+				
+			
+
+				std::vector<u8> recvBuff(yb.sizeBytes() * curStepSize);
+				std::vector<u8> temp(yba.sizeBytes());
+
+				//recv H(y)^b
+				chl.recv(recvBuff);
+
+				if (recvBuff.size() != curStepSize * yb.sizeBytes())
+				{
+					std::cout << "error @ " << (LOCATION) << std::endl;
+					throw std::runtime_error(LOCATION);
+				}
+				auto recvIter = recvBuff.data();
+
+
+				chl.asyncSend(std::move(sendBuff));	//send H(x)^a
+
+				//send H(y)^b^a
+				for (u64 k = 0; k < curStepSize; ++k)
+				{
+					yb.fromBytes(recvIter); recvIter += yb.sizeBytes();
+					yba = yb*a;
+
+
+					yba.toBytes(temp.data());
+					RandomOracle ro(sizeof(block));
+					ro.Update(temp.data(), temp.size());
+					block blk;
+					ro.Final(blk);
+					memcpy(sendIter2, &blk, maskSizeByte);
+#ifdef PRINT
+					if (i == 0)
+					{
+						std::cout << "yba[" << i << "] " << yba << std::endl;
+						std::cout << "temp[" << i << "] " << toBlock(temp) << std::endl;
+						std::cout << "sendIter2[" << i << "] " << toBlock(sendIter2) << std::endl;
+					}
 #endif
-				sendIter2 += maskSizeByte;
-            }
-			//std::cout << "dones send H(y)^b^a" << std::endl;
-	
-        };
+					sendIter2 += maskSizeByte;
+				}
+				//std::cout << "dones send H(y)^b^a" << std::endl;
+			}
+      
+			};
 
 
         std::vector<std::thread> thrds(chls.size());

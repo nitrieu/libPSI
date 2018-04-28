@@ -48,6 +48,9 @@ namespace osuCrypto
 
         const bool isMultiThreaded = chls.size() > 1;
 
+
+		
+
 		auto routine = [&](u64 t)
 		{
 			u64 inputStartIdx = inputs.size() * t / chls.size();
@@ -59,92 +62,98 @@ namespace osuCrypto
 			auto& prng = thrdPrng[t];
 			u8 hashOut[SHA1::HashSize];
 
+			
 			EllipticCurve curve(curveParam, prng.get<block>());
 
 			SHA1 inputHasher;
 			EccNumber b(curve);
 			EccPoint yb(curve), yba(curve), point(curve), xa(curve), xab(curve);
-			 b.randomize(RcSeed);
+			b.randomize(RcSeed);
 
-			std::vector<u8> sendBuff(yb.sizeBytes() * subsetInputSize);
-			auto sendIter = sendBuff.data();
 
-			std::vector<u8> recvBuff(xa.sizeBytes() * subsetInputSize);
-			std::vector<u8> recvBuff2(xab.sizeBytes() * subsetInputSize);
+			 for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
+			 {
+				 auto curStepSize = std::min(stepSize, inputEndIdx - i);
 
-            std::vector<u8>temp(xab.sizeBytes());
+				 std::vector<u8> sendBuff(yb.sizeBytes() * curStepSize);
+				 auto sendIter = sendBuff.data();
+				 //	std::cout << "send H(y)^b" << std::endl;
 
-		//	std::cout << "send H(y)^b" << std::endl;
+				 //send H(y)^b
+				 for (u64 k = 0; k < curStepSize; ++k)
+				 {
 
-			//send H(y)^b
-			for (u64 i = inputStartIdx; i < inputEndIdx; ++i)
-			{
+					 inputHasher.Reset();
+					 inputHasher.Update(inputs[i+k]);
+					 inputHasher.Final(hashOut);
 
-				inputHasher.Reset();
-				inputHasher.Update(inputs[i]);
-				inputHasher.Final(hashOut);
+					 point.randomize(toBlock(hashOut));
+					 //std::cout << "sp  " << point << "  " << toBlock(hashOut) << std::endl;
 
-				point.randomize(toBlock(hashOut));
-				//std::cout << "sp  " << point << "  " << toBlock(hashOut) << std::endl;
+					 yb = (point * b);
 
-				yb = (point * b);
-	
 #ifdef PRINT
-				if (i == 0)
-					std::cout << "yb[" << i << "] " << yb << std::endl;
+					 if (i == 0)
+						 std::cout << "yb[" << i << "] " << yb << std::endl;
 #endif
-				yb.toBytes(sendIter);
-				sendIter += yb.sizeBytes();
-			}
-			chl.asyncSend(std::move(sendBuff));
+					 yb.toBytes(sendIter);
+					 sendIter += yb.sizeBytes();
+				 }
+				 chl.asyncSend(std::move(sendBuff));
 
+			 //recv H(x)^a
+			 //std::cout << "recv H(x)^a" << std::endl;
+				 
+				 std::vector<u8>temp(xab.sizeBytes());
 
-			//recv H(x)^a
-			//std::cout << "recv H(x)^a" << std::endl;
+				 //compute H(x)^a^b as map
+				 //std::cout << "compute H(x)^a^b " << std::endl;
 
-			chl.recv(recvBuff);
-			if (recvBuff.size() != subsetInputSize * xa.sizeBytes())
-			{
-				std::cout << "error @ " << (LOCATION) << std::endl;
-				throw std::runtime_error(LOCATION);
-			}
-			auto recvIter = recvBuff.data();
+				 std::vector<u8> recvBuff(xa.sizeBytes() * curStepSize);
 
-			//compute H(x)^a^b as map
-			//std::cout << "compute H(x)^a^b " << std::endl;
+				 chl.recv(recvBuff);
+				 if (recvBuff.size() != curStepSize * xa.sizeBytes())
+				 {
+					 std::cout << recvBuff.size() << " vs " << curStepSize * xa.sizeBytes() << std::endl;
 
-			for (u64 i = inputStartIdx; i < inputEndIdx;i++)
-			{
-				xa.fromBytes(recvIter); recvIter += xa.sizeBytes();
-				xab = xa*b;
-				
-				xab.toBytes(temp.data());
+					 std::cout << "error @ " << (LOCATION) << std::endl;
+					 throw std::runtime_error(LOCATION);
+				 }
+				 auto recvIter = recvBuff.data();
 
-                RandomOracle ro(sizeof(block));
-                ro.Update(temp.data(), temp.size());
-                block blk;
-                ro.Final(blk);
-				auto idx = *(u32*)&blk;
+				 for (u64 k = 0; k < curStepSize; ++k)
+				 {
+					 xa.fromBytes(recvIter); recvIter += xa.sizeBytes();
+					 xab = xa*b;
+
+					 xab.toBytes(temp.data());
+
+					 RandomOracle ro(sizeof(block));
+					 ro.Update(temp.data(), temp.size());
+					 block blk;
+					 ro.Final(blk);
+					 auto idx = *(u32*)&blk;
 
 #ifdef PRINT
-				if (i == 0)
-				{
-					std::cout << "xab[" << i << "] " << xab << std::endl;
-					std::cout << "idx[" << i << "] " << toBlock(idx) << std::endl;
-				}
+					 if (i == 0)
+					 {
+						 std::cout << "xab[" << i << "] " << xab << std::endl;
+						 std::cout << "idx[" << i << "] " << toBlock(idx) << std::endl;
+					 }
 #endif // PRINT
 
-				
-                if (isMultiThreaded)
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    mapXab.insert({ idx, blk });
-                }
-                else
-                {
-                    mapXab.insert({ idx, blk });
-                }
-			}
+
+					 if (isMultiThreaded)
+					 {
+						 std::lock_guard<std::mutex> lock(mtx);
+						 mapXab.insert({ idx, blk });
+					 }
+					 else
+					 {
+						 mapXab.insert({ idx, blk });
+					 }
+				 }
+			 }
 		};
 
 
