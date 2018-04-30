@@ -4,6 +4,8 @@
 #include "cryptoTools/Common/Log.h"
 #include <cryptoTools/Crypto/RandomOracle.h>
 #include <unordered_map>
+#include "cryptoTools/Common/Timer.h"
+
 
 namespace osuCrypto
 {
@@ -49,7 +51,17 @@ namespace osuCrypto
         const bool isMultiThreaded = chls.size() > 1;
 
 
+		EllipticCurve curve(curveParam, thrdPrng[0].get<block>());
+
+		SHA1 inputHasher;
+		EccNumber b(curve);
+		EccPoint yb(curve), yba(curve), point(curve), xa(curve), xab(curve);
+		b.randomize(RcSeed);
 		
+		Timer timer;
+
+		auto start = timer.setTimePoint("start");
+
 
 		auto routine = [&](u64 t)
 		{
@@ -63,14 +75,6 @@ namespace osuCrypto
 			u8 hashOut[SHA1::HashSize];
 
 			
-			EllipticCurve curve(curveParam, prng.get<block>());
-
-			SHA1 inputHasher;
-			EccNumber b(curve);
-			EccPoint yb(curve), yba(curve), point(curve), xa(curve), xab(curve);
-			b.randomize(RcSeed);
-
-
 			 for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
 			 {
 				 auto curStepSize = std::min(stepSize, inputEndIdx - i);
@@ -100,6 +104,18 @@ namespace osuCrypto
 					 sendIter += yb.sizeBytes();
 				 }
 				 chl.asyncSend(std::move(sendBuff));
+
+			 }
+
+			 auto ybTime = timer.setTimePoint("yb");
+			 auto ybTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(ybTime - start).count();
+			 std::cout << "compute H(y)^b:  " << ybTimeMs << "\n";
+
+
+			 for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
+			 {
+				 auto curStepSize = std::min(stepSize, inputEndIdx - i);
+
 
 			 //recv H(x)^a
 			 //std::cout << "recv H(x)^a" << std::endl;
@@ -154,9 +170,15 @@ namespace osuCrypto
 					 }
 				 }
 			 }
-		};
+		
+			 auto xabTime = timer.setTimePoint("xab");
+			 auto xabTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(xabTime - ybTime).count();
+			 std::cout << "compute H(x)^ab:  " << xabTimeMs << "\n";
 
 
+};
+
+		
         std::vector<std::thread> thrds(chls.size());
         for (u64 i = 0; i < u64(chls.size()); ++i)
         {

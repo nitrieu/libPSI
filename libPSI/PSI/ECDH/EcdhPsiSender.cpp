@@ -42,6 +42,13 @@ namespace osuCrypto
 
 		
 
+		EllipticCurve curve(curveParam, thrdPrng[0].get<block>());
+		RandomOracle inputHasher(sizeof(block));
+		EccNumber a(curve);
+		EccPoint xa(curve), point(curve), yb(curve), yba(curve);
+		a.randomize(RsSeed);
+
+
         auto routine = [&](u64 t)
         {
             u64 inputStartIdx = inputs.size() * t / chls.size();
@@ -52,30 +59,22 @@ namespace osuCrypto
             auto& chl = chls[t];
             auto& prng = thrdPrng[t];
 
-
-			EllipticCurve curve(curveParam, prng.get<block>());
-			RandomOracle inputHasher(sizeof(block));
-			EccNumber a(curve);
-			EccPoint xa(curve), point(curve), yb(curve), yba(curve);
-			a.randomize(RsSeed);
-
-
 			sendBuff2[t].resize(maskSizeByte * subsetInputSize);
 			auto sendIter2 = sendBuff2[t].data();
 
 			for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
 			{
 				auto curStepSize = std::min(stepSize, inputEndIdx - i);
-				
+
 				std::vector<u8> sendBuff(xa.sizeBytes() * curStepSize);
 				auto sendIter = sendBuff.data();
-				
+
 				//send H(x)^a
 				for (u64 k = 0; k < curStepSize; ++k)
 				{
 					block seed;
 					inputHasher.Reset();
-					inputHasher.Update(inputs[i+k]);
+					inputHasher.Update(inputs[i + k]);
 					inputHasher.Final(seed);
 
 					point.randomize(seed);
@@ -89,7 +88,14 @@ namespace osuCrypto
 					xa.toBytes(sendIter);
 					sendIter += xa.sizeBytes();
 				}
-				
+				chl.asyncSend(std::move(sendBuff));	//send H(x)^a
+			}
+
+
+			for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
+			{
+				auto curStepSize = std::min(stepSize, inputEndIdx - i);
+
 			
 
 				std::vector<u8> recvBuff(yb.sizeBytes() * curStepSize);
@@ -105,8 +111,6 @@ namespace osuCrypto
 				}
 				auto recvIter = recvBuff.data();
 
-
-				chl.asyncSend(std::move(sendBuff));	//send H(x)^a
 
 				//send H(y)^b^a
 				for (u64 k = 0; k < curStepSize; ++k)
@@ -134,6 +138,9 @@ namespace osuCrypto
 				//std::cout << "dones send H(y)^b^a" << std::endl;
 			}
       
+			//chl.asyncSend(std::move(sendBuff2[t]));
+
+
 			};
 
 
