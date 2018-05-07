@@ -12,9 +12,72 @@
 //#include "cryptopp/modes.h"
 //#include "MyAssert.h"
 #include <array>
+#include "libPSI/Tools/SimpleIndex.h"
 
 using namespace osuCrypto;
 
+
+
+void Simple_HashingParameters_Calculation() {
+#if 1
+	SimpleIndex simpleIndex;
+	/*std::vector<u64> logNumBalls{ 8,10, 12,14, 16,18, 20,22, 24 };
+	std::vector<u64> lengthCodeWord{ 424,432, 432, 440,440, 448, 448, 448, 448 };
+*/
+	std::vector<u64> logNumBalls{  16};
+	std::vector<u64> lengthCodeWord{ 440};
+
+	u64 statSecParam = 40, lengthItem = 128, compSecParam = 128;
+	u64 commCost;
+	double scale = 0, m = 0;
+	double iScaleStart = 0.01, iScaleEnd = 0.12;
+
+	for (u64 idxN = 0; idxN < logNumBalls.size(); idxN++)
+	{
+		u64 numBalls = 1 << logNumBalls[idxN];
+		double iScale = iScaleStart;
+		while (iScale < iScaleEnd)
+		{
+			u64 numBins = iScale*numBalls;
+			u64 maxBinSize = simpleIndex.get_bin_size(numBins, numBalls, statSecParam);
+			u64 polyBytes = (statSecParam + log2(pow(maxBinSize + 1, 2)*numBins));
+			u64 curCommCost = numBins * (maxBinSize + 1)*(
+				lengthCodeWord[idxN]
+				+ (maxBinSize + 1)*polyBytes //poly
+				+ (lengthCodeWord[idxN] + statSecParam) //peqt
+				+ (1 + lengthItem));//ot
+
+
+			if (iScale == iScaleStart)
+			{
+				commCost = curCommCost;
+				scale = iScale;
+				m = maxBinSize;
+			}
+			std::cout << iScale << "\t" << numBins << "\t" << maxBinSize << "\t"
+				<< curCommCost << " bits = " << (curCommCost / 8)*pow(10, -6) << " Mb \t "
+				<< commCost << " bits = " << (commCost / 8)*pow(10, -6) << " Mb \t ";
+
+			if (commCost > curCommCost)
+			{
+				commCost = curCommCost;
+				scale = iScale;
+				m = maxBinSize;
+
+			}
+
+			std::cout << scale << std::endl;
+
+			//std::cout << iScale << "\t" << commCost <<"\t"<< curCommCost << std::endl;
+			iScale += 0.001;
+		}
+		std::cout << "##############" << std::endl;
+		std::cout << logNumBalls[idxN] << "\t" << scale << "\t" << m << "\t" << (commCost / 8)*pow(10, -6) << " Mb" << std::endl;
+		std::cout << "##############" << std::endl;
+
+	}
+#endif	
+}
 
 
 void EcdhPsi_EmptrySet_Test_Impl()

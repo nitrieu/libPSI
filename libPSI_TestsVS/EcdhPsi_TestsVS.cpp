@@ -30,6 +30,12 @@ namespace WeGarbleTests
             EcdhPsi_SingltonSet_Test_Impl();
         }
 
+		TEST_METHOD(Simple_HashingParameters_Test)
+		{
+			InitDebugPrinting();
+			Simple_HashingParameters_Calculation();
+		}
+
 
         //TEST_METHOD(EcdhPsi_SingltonSet_serial_Test)
         //{

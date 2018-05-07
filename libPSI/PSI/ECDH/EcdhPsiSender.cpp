@@ -26,7 +26,7 @@ namespace osuCrypto
     void EcdhPsiSender::sendInput(std::vector<block>& inputs, span<Channel> chls)
     {
 
-        auto curveParam = Curve25519;
+        auto curveParam = k283;
 
         u64 theirInputSize = inputs.size();
 
@@ -42,11 +42,7 @@ namespace osuCrypto
 
 		
 
-		EllipticCurve curve(curveParam, thrdPrng[0].get<block>());
-		RandomOracle inputHasher(sizeof(block));
-		EccNumber a(curve);
-		EccPoint xa(curve), point(curve), yb(curve), yba(curve);
-		a.randomize(RsSeed);
+	
 
 
         auto routine = [&](u64 t)
@@ -58,6 +54,12 @@ namespace osuCrypto
 			
             auto& chl = chls[t];
             auto& prng = thrdPrng[t];
+
+			EllipticCurve curve(curveParam, thrdPrng[t].get<block>());
+			RandomOracle inputHasher(sizeof(block));
+			EccNumber a(curve);
+			EccPoint xa(curve), point(curve), yb(curve), yba(curve);
+			a.randomize(RsSeed);
 
 			sendBuff2[t].resize(maskSizeByte * subsetInputSize);
 			auto sendIter2 = sendBuff2[t].data();

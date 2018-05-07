@@ -42,7 +42,7 @@ namespace osuCrypto
 
 		u64 maskSizeByte = (40 + 2*log2(inputs.size()) + 7) / 8;
 
-		auto curveParam = Curve25519;
+		auto curveParam = k283;
         auto RcSeed = mPrng.get<block>();
 
 		std::unordered_map<u32, block> mapXab;
@@ -51,12 +51,7 @@ namespace osuCrypto
         const bool isMultiThreaded = chls.size() > 1;
 
 
-		EllipticCurve curve(curveParam, thrdPrng[0].get<block>());
-
-		SHA1 inputHasher;
-		EccNumber b(curve);
-		EccPoint yb(curve), yba(curve), point(curve), xa(curve), xab(curve);
-		b.randomize(RcSeed);
+		
 		
 		Timer timer;
 
@@ -74,6 +69,12 @@ namespace osuCrypto
 			auto& prng = thrdPrng[t];
 			u8 hashOut[SHA1::HashSize];
 
+			EllipticCurve curve(curveParam, thrdPrng[t].get<block>());
+
+			SHA1 inputHasher;
+			EccNumber b(curve);
+			EccPoint yb(curve), yba(curve), point(curve), xa(curve), xab(curve);
+			b.randomize(RcSeed);
 			
 			 for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
 			 {
@@ -107,9 +108,9 @@ namespace osuCrypto
 
 			 }
 
-			 auto ybTime = timer.setTimePoint("yb");
-			 auto ybTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(ybTime - start).count();
-			 std::cout << "compute H(y)^b:  " << ybTimeMs << "\n";
+			/* auto ybTime = timer.setTimePoint("yb");
+			 auto ybTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(ybTime - start).count();*/
+			// std::cout << "compute H(y)^b:  " << ybTimeMs << "\n";
 
 
 			 for (u64 i = inputStartIdx; i < inputEndIdx; i += stepSize)
@@ -171,9 +172,9 @@ namespace osuCrypto
 				 }
 			 }
 		
-			 auto xabTime = timer.setTimePoint("xab");
-			 auto xabTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(xabTime - ybTime).count();
-			 std::cout << "compute H(x)^ab:  " << xabTimeMs << "\n";
+		/*	 auto xabTime = timer.setTimePoint("xab");
+			 auto xabTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(xabTime - ybTime).count();*/
+		//	 std::cout << "compute H(x)^ab:  " << xabTimeMs << "\n";
 
 
 };
