@@ -321,13 +321,7 @@ int main(int argc, char** argv)
     run(DcwRRecv, DcwRSend, DcwrTags, cmd);
 #endif
 
-	run(rr16Tags, cmd, bfRecv, bfSend);
-	run(rr17aTags, cmd, rr17aRecv, rr17aSend);
-	run(rr17aSMTags, cmd, rr17aRecv_StandardModel, rr17aSend_StandardModel);
-	run(rr17bTags, cmd, rr17bRecv, rr17bSend);
-	run(rr17bSMTags, cmd, rr17bRecv_StandardModel, rr17bSend_StandardModel);
-	run(dktTags, cmd, DktRecv, DktSend);
-	run(kkrtTag, cmd, kkrtRecv, kkrtSend);
+	
 	run(ecdhTags, cmd, EcdhRecv, EcdhSend);
 
 
