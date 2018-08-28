@@ -15,7 +15,7 @@
 
 using namespace osuCrypto;
 
-extern u8 dummy[];
+//extern u8 dummy[];
 
 void EcdhSend(LaunchParams& params)
 {
@@ -39,7 +39,7 @@ void EcdhSend(LaunchParams& params)
                 Timer timer;
 
                 sendPSIs.init(setSize, params.mStatSecParam, prng.get<block>());
-                sendChls[0].asyncSend(dummy, 1);
+                //sendChls[0].asyncSend(dummy, 1);
 
                 sendPSIs.sendInput(set, sendChls);
             }
@@ -73,7 +73,7 @@ void EcdhRecv(LaunchParams& params)
                 auto start = timer.setTimePoint("start");
                 recvPSIs.init(setSize, params.mStatSecParam, ZeroBlock);
 
-                chls[0].recv(dummy, 1);
+                //chls[0].recv(dummy, 1);
                 auto mid = timer.setTimePoint("init");
 
                 recvPSIs.sendInput(set, chls);
