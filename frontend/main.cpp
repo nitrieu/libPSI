@@ -4,7 +4,7 @@
 #include "cryptoTools/Network/IOService.h"
 
 //using namespace std;
-#include "UnitTests.h"
+//#include "UnitTests.h"
 #include "cryptoTools/Common/Defines.h"
 //#include "cryptoTools/Common/Version.h"
 
@@ -16,12 +16,9 @@
 
 using namespace osuCrypto;
 
-#include "bloomFilterMain.h"
-#include "dcwMain.h"
-#include "dktMain.h"
+
 #include "ecdhMain.h"
-#include "OtBinMain.h"
-#include "util.h"
+
 
 #include "cryptoTools/Common/MatrixView.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
@@ -31,7 +28,6 @@ using namespace osuCrypto;
 #include <chrono>
 #include "tests_cryptoTools/UnitTests.h"
 #include "libOTe_Tests/UnitTests.h"
-#include "libPSI_Tests/UnitTests.h"
 #include "cryptoTools/Common/Log.h"
 #include "cryptoTools/Common/Timer.h"
 
@@ -293,7 +289,6 @@ int main(int argc, char** argv)
     {
         auto tests = tests_cryptoTools::Tests;
         tests += tests_libOTe::Tests;
-        tests += libPSI_Tests::Tests;
 
         if (cmd.isSet("list"))
         {
