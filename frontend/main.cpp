@@ -110,7 +110,7 @@ void run(
         auto go = [&](LaunchParams& params)
         {
             auto mode = params.mIdx ? EpMode::Server : EpMode::Client;
-            Endpoint ep(ios, "localhost", 1213, mode, "none");
+            Endpoint ep(ios, "172.31.15.222", 1213, mode, "none");
             params.mChls.resize(*std::max_element(params.mNumThreads.begin(), params.mNumThreads.end()));
 
             for (u64 i = 0; i < params.mChls.size(); ++i)
